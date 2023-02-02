@@ -1,0 +1,261 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	
+	<title>CENSO 2022</title>
+	
+	<link rel="shortcut icon" type="image/x-icon" href="docs/images/favicon.ico" />
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.8.0/dist/leaflet.css" integrity="sha512-hoalWLoI8r4UszCkZ5kL8vayOGVae1oxXe/2A4AO6J9+580uKHDO3JdHb7NzwwzK5xr/Fs0W40kiNHxM9vyTtQ==" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.8.0/dist/leaflet.js" integrity="sha512-BB3hKbKWOc9Ez/TAwyWxNXeoV9c1v6FIeYiBieIWkpLjauysF18NzgR1MBNBXf8/KABdlkX68nAhlwcDFLGPCQ==" crossorigin=""></script>
+
+	<style>
+		html, body {
+			height: 100%;
+			margin: 0;
+		}
+		.leaflet-container {
+			height: 100%;
+			width: 100%;
+			max-width: 100%;
+			max-height: 100%;
+		}
+	</style>
+
+	<style>#map { width: 100%; height: 100%; }
+.info { padding: 6px 8px; font: 14px/16px Arial, Helvetica, sans-serif; background: white; background: rgba(255,255,255,0.8); box-shadow: 0 0 15px rgba(0,0,0,0.2); border-radius: 5px; } .info h4 { margin: 0 0 5px; color: #777; }
+.legend { text-align: left; line-height: 18px; color: #555; } .legend i { width: 18px; height: 18px; float: left; margin-right: 8px; opacity: 0.7; }</style>
+</head>
+<body>
+
+<div id='map'></div>
+
+<script type="text/javascript" src="mz.js"></script>
+<script src="data/regiones_0.js"></script>
+<script src="js/qgis2web_expressions.js"></script>
+<script src="js/leaflet.js"></script>
+<script src="js/leaflet.rotatedMarker.js"></script>
+<script src="js/leaflet.pattern.js"></script>
+<script src="js/leaflet-hash.js"></script>
+<script src="js/Autolinker.min.js"></script>
+<script src="js/rbush.min.js"></script>
+<script src="js/labelgun.min.js"></script>
+<script src="js/labels.js"></script>
+<script src="data/regiones_0.js"></script>
+
+<script type="text/javascript">
+
+
+	var map = L.map('map').setView([-28.9068, -57.7819], 8);
+
+	var tiles = L.tileLayer('https://wms.ign.gob.ar/geoserver/gwc/service/tms/1.0.0/mapabase_gris@EPSG%3A3857@png/{z}/{x}/{-y}.png', {
+		maxZoom: 20,
+		attribution: '<a href="https://estadistica.corrientes.gob.ar/">Dirección de Estadística y Censos de la Provincia de Corrientes</a>  |  <a href="https://www.ign.gob.ar/">Argenmap IGN</a>'
+	}).addTo(map);
+
+	// control that shows state info on hover
+	var info = L.control();
+
+	info.onAdd = function (map) {
+		this._div = L.DomUtil.create('div', 'info');
+		this.update();
+		return this._div;
+	};
+
+	info.update = function (props) {
+		const formato = new Intl.NumberFormat('de-DE');
+		this._div.innerHTML = '<div style="font-size: 85%;" ><div style="font-size: 110%;"line-height: 130%; ><div> <img  style=" width: 215px;"  src="logo_a.svg"> <br /> <img style=" width: 215px;"   src="https://censo.gob.ar/wp-content/uploads/2021/12/CNPHV-2022-Header.png "></div> <div style="line-height: 140%;""><br><div style="font-size: 90%;">Resultados provisorios</div>  <div style="font-size: 120%; line-height: 110%; background-color:#f5f5f5; padding: 3px; "><b>Totales provinciales</b></div><div>Variación 2010 - 2022: <b style="font-size: 130%;">20.45% </b> </div><div> Poblacion: <b style="font-size: 125%;">1.197.553</b></div></div><br /> Mujeres: 615.293    <b>51,46%</b> <br /> Varones: 580.013    <b>48,51%</b><br /> X: 270    <b>0,02%</b> <br /> <br /> Viviendas: 406.480   <br />Habitantes por vivienda: <b>2,94</b><br /></div>' +  (props ?
+		//
+		'<hr><div style="font-size: 120%; line-height: 130%; background-color:#f5f5f5; padding: 4px;">Region: <b>' + props.region 
+			+ ' <br /></b></div><div style="font-size: 115%;">Variación  2010 - 2022: <b style="font-size: 120%; line-height: 130%;">'+(((props.r_personas2010)/(props.r_personas)-1 )*-100).toFixed(2) 
+			+'%  </br></b></div><div style="font-size: 120%;">' + 
+			' Poblacion: <b>' + formato.format(parseInt(props.r_personas)) +
+		    '</b></div><br /> Mujeres: '+ formato.format(parseInt(props.r_mujeres)) + '     <b> ' +((props.r_mujeres/props.r_personas) *100).toFixed(2) + 
+			'%</b><br /> Varones: '+ formato.format(parseInt(parseInt(props.r_varones))) + '     <b>' +((props.r_varones/props.r_personas) *100).toFixed(2) +
+		    '%</b><br />       X: '+ formato.format(parseInt(parseInt(props.r_x))) + '     <b>' +((props.r_x/props.r_personas) *100).toFixed(2) +
+			'%</b><br /> <br />Viviendas: '+ formato.format(parseInt((props.r_vivendas))) + '<br>Habitantes por vivienda: <b>' +((props.r_personas/props.r_vivendas).toFixed(2) )+'</b>'+
+		//	
+		'<hr><div style="font-size: 120%; line-height: 110%; background-color:#f5f5f5; padding: 3px; ">Dpto.: <b>' + props.departamento 
+			+ ' <br /></b></div><div style="font-size: 115%;">Variación  2010 - 2022: <b style="font-size: 120%; line-height: 130%;">'+(((props.variacion) )*100).toFixed(2) +
+				'%  </br></b></div><div style="font-size: 115%;">' + 
+			' Poblacion: <b>' + formato.format(parseInt(props.personas)) +
+		    '</b></div><br /> Mujeres: '+ formato.format(parseInt(props.mujeres)) + '     <b> ' +((props.mujeres/props.personas) *100).toFixed(2) + 
+			'%</b><br /> Varones: '+ formato.format(parseInt(parseInt(props.varones))) + '     <b>' +((props.varones/props.personas) *100).toFixed(2) +
+		    '%</b><br />       X: '+ formato.format(parseInt(parseInt(props.x))) + '     <b>' +((props.x/props.personas) *100).toFixed(2) +
+			'%</b><br /> <br />Viviendas: '+ formato.format(parseInt((props.viviendas))) + '<br>Habitantes por vivienda: <b>' +((props.personas/props.viviendas).toFixed(2) )+'</b></div>' : 'Pase el cursor sobre una Departamento');
+	};
+
+	info.addTo(map);
+
+
+	// get color depending on population density value
+	function getColor(d) {
+		return 	d > 70000   ? '#08306b' :
+			d > 30000   ? '#529dcc' :
+			d > 20000   ? '#9ac8e1' :
+			d > 10000   ? '#d1e3f3' : '#f7fbff';
+	}
+
+
+	function style(feature) {
+		return {
+			weight: 2,
+			opacity: 1,
+			color: 'white',
+			dashArray: '3',
+			fillOpacity: 0.4,
+			fillColor: getColor(feature.properties.personas)
+		};
+	}
+
+	function highlightFeature(e) {
+		var layer = e.target;
+
+		layer.setStyle({
+			weight: 5,
+			color: '#666',
+			dashArray: '',
+			fillOpacity: 0.5
+		});
+
+		if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+			layer.bringToFront();
+		}
+
+		info.update(layer.feature.properties);
+	}
+
+	var geojson;
+
+	function resetHighlight(e) {
+		geojson.resetStyle(e.target);
+		info.update();
+	}
+
+	function zoomToFeature(e) {
+		map.fitBounds(e.target.getBounds());
+	}
+
+	function onEachFeature(feature, layer) {
+		layer.on({
+			mouseover: highlightFeature,
+			mouseout: resetHighlight,
+			click: zoomToFeature
+		});
+	}
+
+	/* global mz */
+	geojson = L.geoJson(mz, {
+		style: style,
+		onEachFeature: onEachFeature
+	}).addTo(map);
+
+//	
+
+
+	var legend = L.control({position: 'bottomright'});
+
+	legend.onAdd = function (map) {
+
+		var div = L.DomUtil.create('div', 'info legend');
+		var grades = [0,10000, 20000, 30000,70000];
+		var labels = [];
+		var from, to;
+''
+		for (var i = 0; i < grades.length; i++) {
+			from = grades[i];
+			to = grades[i + 1];
+
+			labels.push(
+				'<i style="background:' + getColor(from + 1) + '"> </i> ' +
+				from + (to ? '&ndash;' + to : '+ <b>  Habs.</b>'));
+		}
+
+		div.innerHTML = labels.join(' <b>  Habs.</b> <br>');
+		return div;
+	};
+
+	legend.addTo(map);
+
+	////////////////////////////////////////////////////////////
+	var hash = new L.Hash(map);
+       // map.attributionControl.setPrefix('<a href="https://github.com/tomchadwin/qgis2web" target="_blank">qgis2web</a> &middot; <a href="https://leafletjs.com" title="A JS library for interactive maps">Leaflet</a> &middot; <a href="https://qgis.org">QGIS</a>');
+        var autolinker = new Autolinker({truncate: {length: 30, location: 'smart'}});
+        var bounds_group = new L.featureGroup([]);
+     
+        function setBounds() {
+        }
+        function pop_regiones_0(feature, layer) {
+            var popupContent = '<table>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['REGIONES'] !== null ? autolinker.link(feature.properties['REGIONES'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['COUNT'] !== null ? autolinker.link(feature.properties['COUNT'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['SUM_AREA'] !== null ? autolinker.link(feature.properties['SUM_AREA'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['VPH_TVP'] !== null ? autolinker.link(feature.properties['VPH_TVP'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['AREA'] !== null ? autolinker.link(feature.properties['AREA'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['PERIMETER'] !== null ? autolinker.link(feature.properties['PERIMETER'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['HECTARES'] !== null ? autolinker.link(feature.properties['HECTARES'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['SUP_KM2'] !== null ? autolinker.link(feature.properties['SUP_KM2'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                    <tr>\
+                        <td colspan="2">' + (feature.properties['DENSIDAD'] !== null ? autolinker.link(feature.properties['DENSIDAD'].toLocaleString()) : '') + '</td>\
+                    </tr>\
+                </table>';
+            layer.bindPopup(popupContent, {maxHeight: 400});
+        }
+
+        function style_regiones_0_0() {
+            return {
+                pane: 'pane_regiones_0',
+                opacity: 0.5,
+                color: 'rgba(10,10,100,0.4)',
+                dashArray: '',
+                lineCap: 'butt',
+                lineJoin: 'miter',
+                weight: 5.0, 
+                fill: true,
+                fillOpacity: 1,
+                fillColor: 'rgba(110,100,250,0.0)',
+                interactive: false,
+            }
+        }
+        map.createPane('pane_regiones_0');
+        map.getPane('pane_regiones_0').style.zIndex = 400;
+        map.getPane('pane_regiones_0').style['mix-blend-mode'] = 'normal';
+        var layer_regiones_0 = new L.geoJson(json_regiones_0, {
+            attribution: '',
+            interactive: false,
+            dataVar: 'json_regiones_0',
+            layerName: 'layer_regiones_0',
+            pane: 'pane_regiones_0',
+            onEachFeature: pop_regiones_0,
+            style: style_regiones_0_0,
+        });
+        bounds_group.addLayer(layer_regiones_0);
+        map.addLayer(layer_regiones_0);
+        setBounds();
+        
+
+</script>
+
+
+
+</body>
+</html>
